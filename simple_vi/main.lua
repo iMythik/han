@@ -124,7 +124,10 @@ local function cast_q(unit)
 			local qpred = pred.linear.get_prediction(spells.q.pred, unit)
 			if qpred then
 				if not pred.collision.get_prediction(spells.q.pred, qpred, unit) then
-					player:castSpell("release", 0, vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y))
+					local q_pos = vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y);
+					if evade.core.is_action_safe(q_pos, spells.q.pred.speed, 0.25) then
+						player:castSpell("release", 0, q_pos)
+					end
 				end
 			end
 		end
@@ -158,16 +161,18 @@ end
 -- Cast E (is called after every AA)
 
 local casted_e = false;
-local function after_aa()
+local function after_aa(spell)
 	if not menu.e.aa:get() then return end
 	if not orb.combat.is_active() then return end
-	if not player:spellSlot(2).state == 0 then return end
+	if player:spellSlot(2).state ~= 0 then casted_e = false return end
 
 	if orb.combat.target then
 		if not casted_e then
-			player:castSpell("self", 2)
-  		end
-  		casted_e = not casted_e
+			player:castSpell("self", 2);
+			orb.core.reset()
+		end
+		casted_e = not casted_e
+		orb.combat.set_invoke_after_attack(false)
   	end
 end
 
@@ -175,7 +180,7 @@ end
 
 local function combo()
 	local target = get_target();
-	if not target then casted_e = false return end
+	if not target then casted_e = false return end -- if no target found then reset e toggle
 
 	if not orb.combat.is_active() then return end
 
