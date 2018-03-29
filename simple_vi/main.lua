@@ -157,13 +157,17 @@ end
 
 -- Cast E (is called after every AA)
 
+local casted_e = false;
 local function after_aa()
 	if not menu.e.aa:get() then return end
 	if not orb.combat.is_active() then return end
 	if not player:spellSlot(2).state == 0 then return end
 
 	if orb.combat.target then
-		player:castSpell("self", 2)
+		if not casted_e then
+			player:castSpell("self", 2)
+  		end
+  		casted_e = not casted_e
   	end
 end
 
@@ -171,7 +175,7 @@ end
 
 local function combo()
 	local target = get_target();
-	if not target then return end
+	if not target then casted_e = false return end
 
 	if not orb.combat.is_active() then return end
 
