@@ -161,7 +161,7 @@ end
 -- Cast E (is called after every AA)
 
 local casted_e = false;
-local function after_aa(spell)
+local function after_aa()
 	if not menu.e.aa:get() then return end
 	if not orb.combat.is_active() then return end
 	if player:spellSlot(2).state ~= 0 then casted_e = false return end
