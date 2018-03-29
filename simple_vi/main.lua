@@ -193,7 +193,7 @@ end
 -- Draw hook
 
 local function ondraw()
-	local pos = graphics.world_to_screen(player.pos)
+	if not player.isVisible then return end
 	graphics.draw_circle(player.pos, q_range(), 2, graphics.argb(255, 192, 57, 43), 70)
 end
 
