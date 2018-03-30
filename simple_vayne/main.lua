@@ -206,7 +206,6 @@ local function ondraw()
 end
 
 cb.add(cb.draw, ondraw)
-
 orb.combat.register_f_pre_tick(ontick)
 orb.combat.register_f_after_attack(roll)
 orb.combat.register_f_out_of_range(out_of_aa)

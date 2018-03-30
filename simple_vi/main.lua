@@ -118,10 +118,10 @@ end
 -- Cast Q and update speed for prediction
 
 local function cast_q(unit)
-	spells.q.pred.speed = q_speed(); -- update pred table
-
 	if unit.pos:dist(player.pos) > q_range() then return end
 	if not q_is_active then return end
+
+	spells.q.pred.speed = q_speed(); -- update pred table
 
 	local qpred = pred.linear.get_prediction(spells.q.pred, unit)
 	if not qpred then return end
