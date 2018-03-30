@@ -47,8 +47,8 @@ spells.q.range = {
 -- Calculation funcs --
 -----------------------
 
-local q_is_active = false;
-local last_q_time = 0;
+local q_is_active = false; -- Store active q boolean, gets updated through buff call
+local last_q_time = 0; -- Last q time store, also gets updated through buff call
 
 -- R Damage calculation
 
@@ -118,18 +118,19 @@ end
 -- Cast Q and update speed for prediction
 
 local function cast_q(unit)
-	spells.q.pred.speed = q_speed();
-	if(unit.pos:dist(player.pos) < q_range())then
-		if(q_is_active) then
-			local qpred = pred.linear.get_prediction(spells.q.pred, unit)
-			if qpred then
-				if not pred.collision.get_prediction(spells.q.pred, qpred, unit) then
-					local q_pos = vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y);
-					if evade.core.is_action_safe(q_pos, spells.q.pred.speed, 0.25) then
-						player:castSpell("release", 0, q_pos)
-					end
-				end
-			end
+	spells.q.pred.speed = q_speed(); -- update pred table
+
+	if unit.pos:dist(player.pos) > q_range() then return end
+	if not q_is_active then return end
+
+	local qpred = pred.linear.get_prediction(spells.q.pred, unit)
+
+	if not qpred then return end
+
+	if not pred.collision.get_prediction(spells.q.pred, qpred, unit) then
+		local q_pos = vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y);
+		if evade.core.is_action_safe(q_pos, spells.q.pred.speed, 0.25) then
+			player:castSpell("release", 0, q_pos)
 		end
 	end
 end
@@ -160,7 +161,7 @@ end
 
 -- Cast E (is called after every AA)
 
-local casted_e = false;
+local casted_e = false; -- toggle for casting e, to make sure it doesn't get casted every AA
 local function after_aa()
 	if not menu.e.aa:get() then return end
 	if not orb.combat.is_active() then return end
