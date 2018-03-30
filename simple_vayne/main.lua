@@ -2,7 +2,6 @@ local orb = module.internal("orb");
 local evade = module.internal("evade");
 local pred = module.internal("pred");
 local ts = module.internal('TS');
-local stacks = {}; -- W Stacks
 
 -------------------
 -- Menu creation --
@@ -93,9 +92,18 @@ end
 ---------------------
 
 local e_pos = nil; -- E position store, gets updated once condemn is called
-local e_inwall = false -- In wall boolean store, gets updated when successfully finds condemn spot
 local e_target = nil; -- E target store, used to check if player is still visible
 local last_e = os.clock(); -- Last E time store, updated every time E is casted
+
+-- Return W stacks
+
+local function get_stacks(unit)
+	local stacks = 0;
+	if unit.buff["vaynesilvereddebuff"] then
+		stacks = unit.buff["vaynesilvereddebuff"].stacks
+	end
+	return stacks;
+end
 
 -- Condemn cast and logic
 
@@ -138,7 +146,7 @@ local function roll()
 
 	if orb.combat.target then
 		if player.pos:dist(target.pos) < range then
-			if menu.q.stacks:get() and stacks[target.networkID] ~= 2 then return end
+			if menu.q.stacks:get() and get_stacks(target) ~= 2 then return end
 			player:castSpell("pos", 0, game.mousePos)
 			orb.core.reset()
 			orb.combat.set_invoke_after_attack(false)
@@ -197,24 +205,6 @@ local function ondraw()
 	end
 end
 
--- Buff update, used for stack update on each target
-
-local function update_buff(buff)
-	if buff.name == "VayneSilveredDebuff" then
-		stacks[buff.owner.networkID] = buff.stacks;
-	end
-end
-
--- Buff remove hook, used for removing stacks when they time out
-
-local function remove_buff(buff)
-	if buff.name == "VayneSilveredDebuff" then
-		stacks[buff.owner.networkID] = 0
-	end
-end
-
-cb.add(cb.updatebuff, update_buff)
-cb.add(cb.removebuff, remove_buff)
 cb.add(cb.draw, ondraw)
 
 orb.combat.register_f_pre_tick(ontick)
