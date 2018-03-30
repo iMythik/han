@@ -124,7 +124,6 @@ local function cast_q(unit)
 	if not q_is_active then return end
 
 	local qpred = pred.linear.get_prediction(spells.q.pred, unit)
-
 	if not qpred then return end
 
 	if not pred.collision.get_prediction(spells.q.pred, qpred, unit) then
