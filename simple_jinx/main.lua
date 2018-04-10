@@ -156,6 +156,16 @@ end
 -- Combo functions --
 ---------------------
 
+-- Minigun status
+
+local function minigun()
+	if player.buff["jinxqicon"] then
+		return true;
+	end
+	return false;
+end
+
+
 -- Possible E spots! (took forever to map out lol)
 
 local spots = {
@@ -176,29 +186,6 @@ local function count_nerds(unit, range)
     return nerds;
 end
 
--- Minigun status
-
-local function minigun()
-	if player.buff["jinxqicon"] then
-		return true;
-	end
-	return false;
-end
-
--- Cast W with prediction (zap zap)
-
-local function zap(unit)
-	if player:spellSlot(1).state ~= 0 then return end
-	if unit.pos:dist(player.pos) > spells.w.range then return end
-
-	local wpred = pred.linear.get_prediction(spells.w, unit)
-	if not wpred then return end
-		
-	if not pred.collision.get_prediction(spells.w, wpred, unit) then
-		player:castSpell("pos", 1, vec3(wpred.endPos.x, game.mousePos.y, wpred.endPos.y))
-	end
-end
-
 -- Switch back to minigun if they are in comfortable range
 
 local function fishbones(unit)
@@ -214,15 +201,30 @@ local function fishbones(unit)
 	end
 end
 
--- Cast chompers, with hand picked spots around the map
+-- Cast Q when target steps out of aa range, and can hit with enhanced Q range
 
-local function e_spot(unit)
-	for i = 1, #spots do
-		local spot_pos = vec3(spots[i][1], spots[i][2], spots[i][3]);
-		if spot_pos:dist(unit.pos) < 200 and player.pos:dist(spot_pos) > 150 then
-			local e_pos = unit.pos + unit.direction * 200
-			player:castSpell("pos", 2, e_pos);
-		end
+local function out_of_aa()
+	if not orb.combat.is_active() then return end
+
+	local target = get_target();
+	if not target then return end
+
+    if minigun() and player.pos:dist(target.pos) > player.attackRange then
+    	player:castSpell("self", 0)
+    end
+end
+
+-- Cast W with prediction (zap zap)
+
+local function zap(unit)
+	if player:spellSlot(1).state ~= 0 then return end
+	if unit.pos:dist(player.pos) > spells.w.range then return end
+
+	local wpred = pred.linear.get_prediction(spells.w, unit)
+	if not wpred then return end
+		
+	if not pred.collision.get_prediction(spells.w, wpred, unit) then
+		player:castSpell("pos", 1, vec3(wpred.endPos.x, game.mousePos.y, wpred.endPos.y))
 	end
 end
 
@@ -242,17 +244,17 @@ local function chompers()
 	end
 end
 
--- Cast Q when target steps out of aa range, and can hit with enhanced Q range
 
-local function out_of_aa()
-	if not orb.combat.is_active() then return end
+-- Cast chompers, with hand picked spots around the map
 
-	local target = get_target();
-	if not target then return end
-
-    if minigun() and player.pos:dist(target.pos) > player.attackRange then
-    	player:castSpell("self", 0)
-    end
+local function e_spot(unit)
+	for i = 1, #spots do
+		local spot_pos = vec3(spots[i][1], spots[i][2], spots[i][3]);
+		if spot_pos:dist(unit.pos) < 200 and player.pos:dist(spot_pos) > 150 then
+			local e_pos = unit.pos + unit.direction * 200
+			player:castSpell("pos", 2, e_pos);
+		end
+	end
 end
 
 
