@@ -178,14 +178,14 @@ local function count_nerds(unit, range)
 	local nerds = 0;
 	for i = 0, objManager.enemies_n - 1 do
     	local nerd = objManager.enemies[i]
-    	if not nerd or nerd.isDead then continue end 
-    	if nerd.pos:dist(unit.pos) <= range then
-    		nerds = nerds + 1;
+    	if nerd and not nerd.isDead then 
+    		if nerd.pos:dist(unit.pos) <= range then
+    			nerds = nerds + 1;
+    		end
     	end
     end
     return nerds;
 end
-
 
 -- Switch back to minigun if they are in comfortable range
 
