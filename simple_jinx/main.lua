@@ -56,6 +56,102 @@ local function get_target()
 	return ts.get_result(select_target).obj
 end
 
+--------------
+-- Base ult --
+--------------
+
+local recalls = {} -- Store table for tracking recalls
+
+recalls.timers =  { -- Recall durations (thanks ryan!)
+    recall = 8.0;
+    odinrecall = 4.5;
+   	odinrecallimproved = 4.0;
+    recallimproved = 7.0;
+    superrecall = 4.0;
+}
+
+-- Calculate total R damage, with every factor included (besides armor and shit)
+
+local r_scale = {250,350,450};
+local r_pct_scale = {0.25, 0.30, 0.35}
+local function r_damage(unit)
+	local dmg = r_scale[player:spellSlot(3).level] or 0;
+	local pct_dmg = r_pct_scale[player:spellSlot(3).level] or 0;
+	local mod = player.flatPhysicalDamageMod + (player.flatPhysicalDamageMod * 0.50);
+	local missing_hp = unit.maxHealth - unit.health;
+	local hp_mod = missing_hp * pct_dmg;
+	return dmg + mod + hp_mod;
+end
+
+-- Calculate in seconds when rocket will reach nexus (fuck this was annoying) 
+
+local function calc_hit_time()
+    local dist = player.pos:dist(side)
+    local speed = (dist > 1350 and (1500*1700+((dist-1350)*2200))/dist or 1700)
+    return (dist / speed) + 0.7 + network.latency
+end
+
+-- Recall tracker, I would have used spell callback however I don't think 
+-- it would have worked when player is not visible, I decided to just loop through
+-- and store, if you think you'd know a better way let me know but this works pretty well
+
+local function track_recall()
+	if not menu.baseult:get() then return end
+	for i = 0, objManager.enemies_n - 1 do
+    	local nerd = objManager.enemies[i]
+    	if not nerd then return end
+
+    	if not recalls[nerd.networkID] then 
+    		recalls[nerd.networkID] = {}
+    	end
+
+    	local data = recalls[nerd.networkID];
+
+    	if nerd.isRecalling then 
+    		
+    		local recall_time = recalls.timers[nerd.recallName];
+    		if not recall_time then return end
+
+    		if data.recall then
+    			data.time = recall_time - (os.clock() - data.start);
+    			return
+    		end
+
+			data.recall = true;
+			data.hp = nerd.health;
+			data.time = recall_time;
+			data.start = os.clock();
+   		else
+   			if data and data.recall then
+   				data.recall = false;
+   			end
+   		end
+   	end
+end
+
+-- Base ult, didn't really want to loop through players again as this causes fps drops
+-- But it was nessicary with the way that the recall tracker works.
+
+local function base_ult()
+	if not menu.baseult:get() then return end
+	if player:spellSlot(3).state ~= 0 then return end
+	
+	for i = 0, objManager.enemies_n - 1 do
+    	local nerd = objManager.enemies[i]
+    	local data = recalls[nerd.networkID];
+
+    	local path = mathf.closest_vec_line(nerd.pos, player.pos, side)
+        if path and path:dist(nerd.pos) <= (120 + nerd.boundingRadius) then return end
+
+    	if data.recall and data.time <= calc_hit_time() then
+    		if r_damage(nerd) < data.hp then return end
+    		if data.time > calc_hit_time() + 0.6 then return end
+    		player:castSpell("pos", 3, side); 
+    		data.recall = false;
+    	end
+    end
+end
+
 ---------------------
 -- Combo functions --
 ---------------------
@@ -87,19 +183,6 @@ local function minigun()
 		return true;
 	end
 	return false;
-end
-
--- Calculate total R damage, with every factor included (besides armor and shit)
-
-local r_scale = {250,350,450};
-local r_pct_scale = {0.25, 0.30, 0.35}
-local function r_damage(unit)
-	local dmg = r_scale[player:spellSlot(3).level] or 0;
-	local pct_dmg = r_pct_scale[player:spellSlot(3).level] or 0;
-	local mod = player.flatPhysicalDamageMod + (player.flatPhysicalDamageMod * 0.50);
-	local missing_hp = unit.maxHealth - unit.health;
-	local hp_mod = missing_hp * pct_dmg;
-	return dmg + mod + hp_mod;
 end
 
 -- Cast W with prediction (zap zap)
@@ -161,7 +244,6 @@ end
 
 -- Cast Q when target steps out of aa range, and can hit with enhanced Q range
 
-local q_range = {600,625,650,675,700};
 local function out_of_aa()
 	if not orb.combat.is_active() then return end
 
@@ -197,89 +279,6 @@ local function combo()
 	fishbones(target);
 
 end
-
---------------
--- Base ult --
---------------
-
-local recalls = {} -- Store table for tracking recalls
-
-recalls.timers =  { -- Recall durations (thanks ryan!)
-    recall = 8.0;
-    odinrecall = 4.5;
-   	odinrecallimproved = 4.0;
-    recallimproved = 7.0;
-    superrecall = 4.0;
-}
-
--- Calculate in seconds when rocket will reach nexus (fuck this was annoying) 
-
-local function calc_hit_time()
-    local dist = player.pos:dist(side)
-    local speed = (dist > 1350 and (1500*1700+((dist-1350)*2200))/dist or 1700)
-    return (dist / speed) + 0.7 + network.latency
-end
-
--- Recall tracker, I would have used spell callback however I don't think 
--- it would have worked when player is not visible, I decided to just loop through
--- and store, if you think you'd know a better way let me know but this works pretty well
-
-local function track_recall()
-	if not menu.baseult:get() then return end
-	for i = 0, objManager.enemies_n - 1 do
-    	local nerd = objManager.enemies[i]
-    	if not nerd then return end
-
-    	if not recalls[nerd.networkID] then 
-    		recalls[nerd.networkID] = {}
-    	end
-
-    	local data = recalls[nerd.networkID];
-
-    	if nerd.isRecalling then 
-    		
-    		local recall_time = recalls.timers[nerd.recallName];
-    		if not recall_time then return end
-
-    		if data.recall then
-    			data.time = recall_time - (os.clock() - data.start);
-    			return
-    		end
-
-			data.recall = true;
-			data.hp = nerd.health;
-			data.time = recall_time;
-			data.start = os.clock();
-   		else
-   			if data and data.recall then
-   				data.recall = false;
-   			end
-   		end
-   	end
-end
-
--- Base ult, didn't really want to loop through players again as this causes fps drops
--- But it was nessicary with the way that the recall tracker works.
-
-local function base_ult()
-	if not menu.baseult:get() then return end
-	if player:spellSlot(3).state ~= 0 then return end
-	for i = 0, objManager.enemies_n - 1 do
-    	local nerd = objManager.enemies[i]
-    	local data = recalls[nerd.networkID];
-
-    	local path = mathf.closest_vec_line(nerd.pos, player.pos, side)
-        if path and path:dist(nerd.pos) <= (120 + nerd.boundingRadius) then return end
-
-    	if data.recall and data.time <= calc_hit_time() then
-    		if r_damage(nerd) < data.hp then return end
-    		if data.time > calc_hit_time() + 0.6 then return end
-    		player:castSpell("pos", 3, side); 
-    		data.recall = false;
-    	end
-    end
-end
-
 
 -----------
 -- Hooks --
