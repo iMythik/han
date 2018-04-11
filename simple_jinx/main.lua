@@ -87,8 +87,8 @@ end
 
 local function calc_hit_time()
     local dist = player.pos:dist(side)
-    local speed = (dist > 1350 and (1500*1700+((dist-1350)*2200))/dist or 1700)
-    return (dist / speed) + 0.7 + network.latency
+    local speed = (dist > 1350 and (1350*1700+((dist-1350)*2200))/dist or 1700)
+    return (dist / speed) + 0.65 + network.latency
 end
 
 -- Recall tracker, I would have used spell callback however I don't think 
@@ -144,10 +144,9 @@ local function base_ult()
         if path and path:dist(nerd.pos) <= (120 + nerd.boundingRadius) then return end
 
     	if data.recall and data.time <= calc_hit_time() then
+    		if data.time < calc_hit_time() - 0.25 then return end
     		if r_damage(nerd) < data.hp then return end
-    		if data.time > calc_hit_time() + 0.6 then return end
     		player:castSpell("pos", 3, side); 
-    		data.recall = false;
     	end
     end
 end
