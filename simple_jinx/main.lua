@@ -18,7 +18,18 @@ end
 -------------------
 
 local menu = menu("simplejinx", "Simple Jinx");
-menu:boolean("baseult", "Base ult", true);
+
+menu:menu("q", "Q Settings");
+	menu.q:slider('mana', "Don't use rockets under mana percent", 25, 0, 100, 1);
+
+menu:menu("e", "E Settings");
+	menu.e:boolean("auto", "Auto E on good spots", true);
+	menu.e:boolean("stunned", "Auto E on stunned targets", true);
+
+menu:menu("r", "Ult Settings");
+	menu.r:boolean("baseult", "Base ult", true);
+	menu.r:keybind("ult", "Manual R", "T", nil)
+	menu.r:slider('range', "Max manual ult range", 2000, 0, 5000, 5);
 
 ts.load_to_menu();
 
@@ -28,6 +39,8 @@ ts.load_to_menu();
 
 local spells = {};
 
+-- Pred input for W
+
 spells.w = { 
 	delay = 0.6; 
 	width = 55;
@@ -35,6 +48,16 @@ spells.w = {
 	boundingRadiusMod = 1; 
 	collision = { hero = true, minion = true }; 
 	range = 1450;
+}
+
+-- Pred input for ult
+
+spells.r = { 
+	delay = 0.65; 
+	width = 120;
+	speed = 1700; 
+	boundingRadiusMod = 1; 
+	collision = { hero = true, minion = false }; 
 }
 
 -------------------------------
@@ -50,10 +73,19 @@ local function select_target(res, obj, dist)
 	return true
 end
 
+-- Target selector with extended range for ult usage
+
+local function ult_target(res, obj, dist)
+	if dist > 5000 then return end
+	
+	res.obj = obj
+	return true
+end
+
 -- Get target selector result
 
-local function get_target()
-	return ts.get_result(select_target).obj
+local function get_target(func)
+	return ts.get_result(func).obj
 end
 
 --------------
@@ -83,11 +115,15 @@ local function r_damage(unit)
 	return dmg + mod + hp_mod;
 end
 
+local function calc_ult_speed(dist)
+	return (dist > 1350 and (1350*1700+((dist-1350)*2200))/dist or 1700)
+end
+
 -- Calculate in seconds when rocket will reach nexus (fuck this was annoying) 
 
 local function calc_hit_time()
-    local dist = player.pos:dist(side)
-    local speed = (dist > 1350 and (1350*1700+((dist-1350)*2200))/dist or 1700)
+    local dist = player.pos:dist(side);
+    local speed = calc_ult_speed(dist);
     return (dist / speed) + 0.65 + network.latency
 end
 
@@ -96,7 +132,7 @@ end
 -- and store, if you think you'd know a better way let me know but this works pretty well
 
 local function track_recall()
-	if not menu.baseult:get() then return end
+	if not menu.r.baseult:get() then return end
 	for i = 0, objManager.enemies_n - 1 do
     	local nerd = objManager.enemies[i]
     	if not nerd then return end
@@ -133,7 +169,7 @@ end
 -- But it was nessicary with the way that the recall tracker works.
 
 local function base_ult()
-	if not menu.baseult:get() then return end
+	if not menu.r.baseult:get() then return end
 	if player:spellSlot(3).state ~= 0 then return end
 	
 	for i = 0, objManager.enemies_n - 1 do
@@ -164,6 +200,9 @@ local function minigun()
 	return false;
 end
 
+local function mana_pct()
+	return player.mana / player.maxMana * 100
+end
 
 -- Possible E spots! (took forever to map out lol)
 
@@ -191,7 +230,7 @@ end
 local function fishbones(unit)
 	local nerds = count_nerds(unit, 100);
 	if not minigun() then
-	 	if player.pos:dist(unit.pos) <= player.attackRange and nerds == 1 then
+	 	if player.pos:dist(unit.pos) <= player.attackRange and nerds == 1 or mana_pct() < menu.q.mana:get() then
 			player:castSpell("self", 0)
 		end
 	else
@@ -206,8 +245,10 @@ end
 local function out_of_aa()
 	if not orb.combat.is_active() then return end
 
-	local target = get_target();
+	local target = get_target(select_target);
 	if not target then return end
+
+	if mana_pct() < menu.q.mana:get() then return end
 
     if minigun() and player.pos:dist(target.pos) > player.attackRange then
     	player:castSpell("self", 0)
@@ -244,10 +285,10 @@ local function chompers()
 	end
 end
 
-
 -- Cast chompers, with hand picked spots around the map
 
 local function e_spot(unit)
+	if not menu.e.auto:get() then return end
 	for i = 1, #spots do
 		local spot_pos = vec3(spots[i][1], spots[i][2], spots[i][3]);
 		if spot_pos:dist(unit.pos) < 200 and player.pos:dist(spot_pos) > 150 then
@@ -257,6 +298,25 @@ local function e_spot(unit)
 	end
 end
 
+-- Manually cast rocket wtih key and prediction
+
+local function manual_ult()
+	if not menu.r.ult:get() then return end
+
+	local target = get_target(ult_target);
+	if not target then return end
+
+	local dist = player.pos:dist(target);
+
+	if not target.isDead and dist <= menu.r.range:get() then
+		spells.r.speed = calc_ult_speed(dist);
+		local rpred = pred.linear.get_prediction(spells.r, target)
+		if not rpred then return end
+		if not pred.collision.get_prediction(spells.r, rpred, target) then
+			player:castSpell("pos", 3, vec3(rpred.endPos.x, game.mousePos.y, rpred.endPos.y))
+		end
+	end
+end
 
 -- Combo function to call each cast
 
@@ -264,7 +324,7 @@ local function combo()
 
 	chompers();
 
-	local target = get_target();
+	local target = get_target(select_target);
 
 	if not target then
 		if not minigun() then
@@ -292,6 +352,7 @@ local function ontick()
 
 	track_recall();
 	base_ult();
+	manual_ult();
 	combo();
 
 end
@@ -300,6 +361,7 @@ end
 
 local buffs = {29, 24, 11, 5}; -- Stuns and slows
 local function update_buff(buff)
+	if not menu.e.stunned:get() then return end
 	if not buff.owner or not buff.type then return end
 	if buff.owner.type ~= player.type or buff.owner.team ~= TEAM_ENEMY then return end
 
@@ -315,7 +377,7 @@ end
 
 local function ondraw()
 	local pos = graphics.world_to_screen(player.pos);
-	if menu.baseult:get() then 
+	if menu.r.baseult:get() then 
 		graphics.draw_text_2D("Base-ult active!", 14, pos.x, pos.y, graphics.argb(255,255,255,255))
 	end
 end
