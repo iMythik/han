@@ -102,18 +102,28 @@ recalls.timers =  { -- Recall durations (thanks ryan!)
     superrecall = 4.0;
 }
 
--- Calculate total R damage, with every factor included (besides armor and shit)
+-- Get physical damage reduction (thanks ryan!)
+
+local function damage_reduction(unit)
+  	local armor = ((unit.bonusArmor * player.percentBonusArmorPenetration) + (unit.armor - unit.bonusArmor)) * player.percentArmorPenetration
+  	local lethality = (player.physicalLethality * .4) + ((player.physicalLethality * .6) * (player.levelRef / 18))
+  	return armor >= 0 and (100 / (100 + (armor - lethality))) or (2 - (100 / (100 - (armor - lethality))))
+end
+
+-- Calculate total R damage, with every factor included
 
 local r_scale = {250,350,450};
 local r_pct_scale = {0.25, 0.30, 0.35}
 local function r_damage(unit)
 	local dmg = r_scale[player:spellSlot(3).level] or 0;
 	local pct_dmg = r_pct_scale[player:spellSlot(3).level] or 0;
-	local mod = player.flatPhysicalDamageMod + (player.flatPhysicalDamageMod * 0.50);
+	local mod = (((player.baseAttackDamage + player.flatPhysicalDamageMod) * player.percentPhysicalDamageMod) - player.baseAttackDamage) * 1.5;
 	local missing_hp = unit.maxHealth - unit.health;
 	local hp_mod = missing_hp * pct_dmg;
-	return dmg + mod + hp_mod;
+	return (dmg + mod + hp_mod) * damage_reduction(unit);
 end
+
+-- Calculate ult speed with calculation
 
 local function calc_ult_speed(dist)
 	return (dist > 1350 and (1350*1700+((dist-1350)*2200))/dist or 1700)
@@ -154,7 +164,6 @@ local function track_recall()
     		end
 
 			data.recall = true;
-			data.hp = nerd.health;
 			data.time = recall_time;
 			data.start = os.clock();
    		else
@@ -179,9 +188,13 @@ local function base_ult()
     	local path = mathf.closest_vec_line(nerd.pos, player.pos, side)
         if path and path:dist(nerd.pos) <= (120 + nerd.boundingRadius) then return end
 
-    	if data.recall and data.time <= calc_hit_time() then
-    		if data.time < calc_hit_time() - 0.25 then return end
-    		if r_damage(nerd) < data.hp then return end
+        local health = (nerd.health + nerd.physicalShield) + (unit.maxHealth * 0.021);
+        if not nerd.isVisible then
+        	health = health + ((nerd.healthRegenRate / 5) * calc_hit_time())
+        end
+
+    	if data.recall and data.time <= calc_hit_time() and r_damage(nerd) > health then
+    		if data.time < calc_hit_time() - 0.1 then return end
     		player:castSpell("pos", 3, side); 
     	end
     end
@@ -199,6 +212,8 @@ local function minigun()
 	end
 	return false;
 end
+
+-- Get current mana in percentage
 
 local function mana_pct()
 	return player.mana / player.maxMana * 100
