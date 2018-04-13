@@ -23,6 +23,7 @@ menu:menu("q", "Q Settings");
 	menu.q:slider('mana', "Don't use rockets under mana percent", 25, 0, 100, 1);
 
 menu:menu("e", "E Settings");
+	menu.e:keybind("manual", "Manual E", "C", nil)
 	menu.e:boolean("auto", "Auto E on good spots", true);
 	menu.e:boolean("stunned", "Auto E on stunned targets", true);
 
@@ -49,6 +50,15 @@ spells.w = {
 	collision = { hero = true, minion = true }; 
 	range = 1450;
 }
+
+-- Pred input for E
+
+spells.e = {
+    delay = 0.95;
+    radius = 50;
+    speed = 1100;
+    boundingRadiusMod = 1;
+ }
 
 -- Pred input for ult
 
@@ -284,31 +294,39 @@ local function zap(unit)
 	end
 end
 
+
 -- Cast chompers, only used when a stun or a slow is casted on target
 
-local buff_time = nil; -- Store time of buff update on target
-local buff_target = nil; -- Store buff update target
-local function chompers()
-	if player:spellSlot(2).state ~= 0 then return end
-	if not buff_time or not buff_target then return end
- 	if buff_target.isDead then buff_target = nil return end
- 	if player.pos:dist(buff_target.pos) > 890 then buff_target = nil return end
+local function chompers(unit)
+	if menu.e.manual:get() then
+		player:move(game.mousePos);
+	end
 
-	if os.clock() + 0.5 >= buff_time then
-		player:castSpell("pos", 2, buff_target.pos);
-		buff_target = nil;
+	if player:spellSlot(2).state ~= 0 then return end
+	if unit.pos:dist(player.pos) > 890 then return end
+
+	local epred = pred.circular.get_prediction(spells.e, unit)
+	if not epred then return end
+
+	if pred.trace.circular.hardlock(spells.e, epred, unit) or pred.trace.circular.hardlockmove(spells.e, epred, unit) or menu.e.manual:get() then
+		player:castSpell("pos", 2, vec3(epred.endPos.x, unit.pos.y, epred.endPos.y))
 	end
 end
+
 
 -- Cast chompers, with hand picked spots around the map
 
 local function e_spot(unit)
 	if not menu.e.auto:get() then return end
+	if player:spellSlot(2).state ~= 0 then return end
 	for i = 1, #spots do
 		local spot_pos = vec3(spots[i][1], spots[i][2], spots[i][3]);
-		if spot_pos:dist(unit.pos) < 200 and player.pos:dist(spot_pos) > 150 then
-			local e_pos = unit.pos + unit.direction * 200
-			player:castSpell("pos", 2, e_pos);
+		if spot_pos:dist(unit.pos) < 200 and player.pos:dist(spot_pos) > 100 then
+			
+			local epred = pred.circular.get_prediction(spells.e, unit)
+			if not epred then return end
+			
+			player:castSpell("pos", 2, vec3(epred.endPos.x, unit.pos.y, epred.endPos.y))
 		end
 	end
 end
@@ -317,6 +335,9 @@ end
 
 local function manual_ult()
 	if not menu.r.ult:get() then return end
+	if player:spellSlot(3).state ~= 0 then return end
+
+	player:move(game.mousePos);
 
 	local target = get_target(ult_target);
 	if not target then return end
@@ -337,8 +358,6 @@ end
 
 local function combo()
 
-	chompers();
-
 	local target = get_target(select_target);
 
 	if not target then
@@ -348,6 +367,7 @@ local function combo()
 	 	return
 	end
 
+	chompers(target);
 	e_spot(target);
 
 	if not orb.combat.is_active() then return end
@@ -372,22 +392,6 @@ local function ontick()
 
 end
 
--- Update buff hook, used for chompers
-
-local buffs = {29, 24, 11, 5}; -- Stuns and slows
-local function update_buff(buff)
-	if not menu.e.stunned:get() then return end
-	if not buff.owner or not buff.type then return end
-	if buff.owner.type ~= player.type or buff.owner.team ~= TEAM_ENEMY then return end
-
-	for i = 0, #buffs do
-		if buff.type == buffs[i] then
-			buff_target = buff.owner;
-			buff_time = os.clock();
-		end
-	end
-end
-
 -- Draw hook, only used to draw predicted e position
 
 local function ondraw()
@@ -398,6 +402,5 @@ local function ondraw()
 end
 
 cb.add(cb.draw, ondraw)
-cb.add(cb.updatebuff, update_buff)
 orb.combat.register_f_pre_tick(ontick)
 orb.combat.register_f_out_of_range(out_of_aa)
