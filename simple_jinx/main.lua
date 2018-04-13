@@ -188,7 +188,7 @@ local function base_ult()
     	local path = mathf.closest_vec_line(nerd.pos, player.pos, side)
         if path and path:dist(nerd.pos) <= (120 + nerd.boundingRadius) then return end
 
-        local health = (nerd.health + nerd.physicalShield) + (unit.maxHealth * 0.021);
+        local health = (nerd.health + nerd.physicalShield) + (nerd.maxHealth * 0.021);
         if not nerd.isVisible then
         	health = health + ((nerd.healthRegenRate / 5) * calc_hit_time())
         end
