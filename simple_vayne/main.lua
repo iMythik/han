@@ -14,6 +14,8 @@ menu:menu("q", "Q Settings");
 	menu.q:boolean("range", "Roll to get in aa range", true)
 
 menu:menu("e", "E Settings");
+	menu.e:keybind("aa", "Condemn on next AA", nil, "T")
+	menu.e:boolean("interrupt", "Interrupt dangerous spells", true)
 	menu.e:boolean("auto", "Automatically condemn when possible", true)
 	menu.e:slider('range', "Max range", 350, 0, 500, 5);
 	menu.e:slider('accuracy', "Accuracy checks", 5, 1, 50, 1);
@@ -47,6 +49,75 @@ spells.e = {
 	boundingRadiusModSource = 1;
     boundingRadiusModTarget = 1;
 }
+
+--------------------
+-- Auto interrupt --
+--------------------
+
+spells.interrupt = {}
+
+spells.interrupt.names = { -- names of dangerous spells
+	"glacialstorm";
+	"caitlynaceinthehole";
+	"ezrealtrueshotbarrage";
+	"drain";
+	"crowstorm";
+	"gragasw";
+	"reapthewhirlwind";
+	"karthusfallenone";
+	"katarinar";
+	"lucianr";
+	"luxmalicecannon";
+	"malzaharr";
+	"meditate";
+	"missfortunebullettime";
+	"absolutezero";
+	"pantheonrjump";
+	"shenr";
+	"gate";
+	"varusq";
+	"warwickr";
+	"xerathlocusofpower2";
+}
+
+spells.interrupt.times = {6, 1, 1, 5, 1.5, 0.75, 3, 3, 2.5, 2, 0.5, 2.5, 4, 3, 3, 2, 3, 1.5, 4, 1.5, 3}; -- channel times of dangerous spells
+
+-- On spell hook, used for interrupting
+
+local interrupt_data = {};
+local function on_spell(spell)
+	if not menu.e.interrupt:get() then return end
+	if not spell or not spell.name or not spell.owner then return end
+	if spell.owner.isDead then return end
+	if spell.owner.team == player.team then return end
+	if player.pos:dist(spell.owner.pos) > player.attackRange + (player.boundingRadius + spell.owner.boundingRadius) then return end
+
+	for i = 0, #spells.interrupt.names do
+		if (spells.interrupt.names[i] == string.lower(spell.name)) then
+			interrupt_data.start = os.clock();
+			interrupt_data.channel = spells.interrupt.times[i];
+			interrupt_data.owner = spell.owner;
+		end
+	end
+end
+
+-- Interrupt stored dangerous spells w/ delay
+
+local function interrupt()
+	if not menu.e.interrupt:get() then return end
+	if not interrupt_data.owner then return end
+	if player.pos:dist(interrupt_data.owner.pos) > player.attackRange + (player.boundingRadius + interrupt_data.owner.boundingRadius) then return end
+	
+	if os.clock() - interrupt_data.channel >= interrupt_data.start then
+		interrupt_data.owner = false;
+		return
+	end
+
+	if os.clock() - 0.35 >= interrupt_data.start then
+		player:castSpell("obj", 2, interrupt_data.owner);
+		interrupt_data.owner = false;
+	end
+end
 
 -------------------------------
 -- Target selector functions --
@@ -134,6 +205,18 @@ local function condemn(unit)
 	end
 end
 
+-- Condemn on next AA toggle
+
+local function condemn_next_aa(unit)
+	if not menu.e.aa:get() then return end 
+	if player:spellSlot(2).state ~= 0 then return end
+
+	if orb.combat.target and orb.core.can_attack() then
+		player:castSpell("obj", 2, unit)
+		menu.e.aa:set("toggleValue", false)
+  	end
+end
+
 -- Roll cast with range & stack check
 
 local function roll()
@@ -181,6 +264,7 @@ local function combo()
 
 	if not menu.e.auto:get() and not orb.combat.is_active() then return end
 
+	condemn_next_aa(target);
 	condemn(target);
 end
 
@@ -191,12 +275,19 @@ end
 -- Called pre tick
 
 local function ontick()
+	interrupt();
 	combo();
 end
 
 -- Draw hook, only used to draw predicted e position
 
 local function ondraw()
+
+	if menu.e.aa:get() and player.isOnScreen then
+		local pos = graphics.world_to_screen(player.pos);
+		graphics.draw_text_2D("Condemn on next AA", 14, pos.x, pos.y, graphics.argb(255,255,255,255))
+	end
+
 	if e_pos and last_e > os.clock() - 3 and player.isOnScreen then
 
 		if e_target and not e_target.isOnScreen then return end
@@ -206,6 +297,8 @@ local function ondraw()
 end
 
 cb.add(cb.draw, ondraw)
+cb.add(cb.spell, on_spell)
+
 orb.combat.register_f_pre_tick(ontick)
 orb.combat.register_f_after_attack(roll)
 orb.combat.register_f_out_of_range(out_of_aa)

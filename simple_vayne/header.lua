@@ -4,4 +4,5 @@ return {
     load = function()
      	return player.charName == "Vayne"
     end;
+    type = "Champion";
 }
