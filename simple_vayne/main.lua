@@ -15,6 +15,7 @@ menu:menu("q", "Q Settings");
 
 menu:menu("e", "E Settings");
 	menu.e:keybind("aa", "Condemn on next AA", nil, "T")
+	menu.e:boolean("gapclose", "Prevent enemy gapclosing", true)
 	menu.e:boolean("interrupt", "Interrupt dangerous spells", true)
 	menu.e:boolean("auto", "Automatically condemn when possible", true)
 	menu.e:slider('range', "Max range", 350, 0, 500, 5);
@@ -188,7 +189,7 @@ local function condemn(unit)
 
 	if not obj then return end
 
-	local e_target = obj
+	e_target = obj
 	local p = pred.present.get_source_pos(obj)
 	local unitPos = vec3(p.x, obj.y, p.y);
 	
@@ -215,6 +216,26 @@ local function condemn_next_aa(unit)
 		player:castSpell("obj", 2, unit)
 		menu.e.aa:set("toggleValue", false)
   	end
+end
+
+-- Condemn on enemy gapclose
+
+local function gapclose()
+	if not menu.e.gapclose:get() then return end
+	if player:spellSlot(2).state ~= 0 then return end
+
+	local obj = ts.get_result(e_pred).obj;
+	if not obj or not obj.path.isActive or not obj.path.isDashing then return end
+
+	local range = player.attackRange + (player.boundingRadius + obj.boundingRadius)
+	if player.pos:dist(obj.pos) > range then return end
+	
+	local pred_pos = pred.core.lerp(obj.path, network.latency + spells.e.delay, obj.path.dashSpeed)
+	if not pred_pos then return end
+
+	if pred_pos:dist(player.pos2D) <= range then
+		player:castSpell("obj", 2, obj)
+	end
 end
 
 -- Roll cast with range & stack check
@@ -276,6 +297,7 @@ end
 
 local function ontick()
 	interrupt();
+	gapclose();
 	combo();
 end
 
