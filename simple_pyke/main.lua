@@ -36,7 +36,7 @@ spells.q = {
 -- Pred input for R
 
 spells.r = { 
-    delay = 0.45;
+    delay = 0.35;
     radius = 50;
     speed = 1100;
     boundingRadiusMod = 1;
@@ -156,7 +156,8 @@ local ex_data = {};
 local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
 	if player.pos:dist(unit.pos) > 700 then return end
-	if unit.isDead or not unit.isVisible then return end
+	if unit.isDead or not unit.isVisible and unit.isTargetable then return end
+	if unit.buff and unit.buff[17] then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
 	if not rpred then return end
