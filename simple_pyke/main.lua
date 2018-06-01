@@ -154,6 +154,7 @@ end
 local ex_data = {};
 local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
+	if player.pos:dist(unit.pos) > 700 then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
 	if not rpred then return end
