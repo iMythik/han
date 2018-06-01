@@ -161,6 +161,7 @@ local function execute(unit)
 	if not rpred then return end
 
 	local pred_pos = vec3(rpred.endPos.x, unit.pos.y, rpred.endPos.y);
+	if pred_pos:dist(player.pos) > 700 then return end
 
 	local x1 = pred_pos + vec3(200,0,200);
 	local x2 = pred_pos + vec3(-200,0,-200);
