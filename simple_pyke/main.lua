@@ -155,6 +155,7 @@ local ex_data = {};
 local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
 	if player.pos:dist(unit.pos) > 700 then return end
+	if unit.isDead or not unit.isVisible then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
 	if not rpred then return end
@@ -199,7 +200,7 @@ local function ontick()
     	if not nerd then return end
     	if not ex_data[nerd.networkID] then ex_data[nerd.networkID] = {} end
     	ex_data[nerd.networkID].kill = false;
-    	if r_damage() >= nerd.health and not nerd.isDead then
+    	if r_damage() >= nerd.health and not nerd.isDead and nerd.isVisible then
     		ex_data[nerd.networkID].kill = true;
     		execute(nerd);
     	end
