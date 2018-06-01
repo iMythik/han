@@ -120,6 +120,7 @@ end
 
 local function spear(unit)
 	if player:spellSlot(0).state ~= 0 then return end
+	if (player:spellSlot(2).state == 0 and unit.pos:dist(player.pos) < menu.e.range:get()) and not player.buff['pykeq'] then return end
 	if unit.pos:dist(player.pos) > q_range() then return end
 
 	local qpred = pred.linear.get_prediction(spells.q, unit)
