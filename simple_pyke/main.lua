@@ -141,6 +141,7 @@ end
 local function dash(unit)
 	if not menu.e.e:get() then return end
 	if player:spellSlot(2).state ~= 0 then return end
+	if player.buff["pykeq"] then return end
 	if unit.pos:dist(player.pos) > menu.e.range:get() then return end
 	if mana_pct() < menu.e.mana:get() then return end
 
