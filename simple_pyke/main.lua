@@ -120,15 +120,16 @@ end
 
 local function spear(unit)
 	if player:spellSlot(0).state ~= 0 then return end
-	if (player:spellSlot(2).state == 0 and unit.pos:dist(player.pos) < menu.e.range:get()) and not player.buff['pykeq'] then return end
+	if (player:spellSlot(2).state == 0 and unit.pos:dist(player.pos) < menu.e.range:get()) and not player.buff['pykeq'] and menu.e.e:get() then return end
 	if unit.pos:dist(player.pos) > q_range() then return end
 
 	local qpred = pred.linear.get_prediction(spells.q, unit)
 	if not qpred then return end
 		
-	if not pred.collision.get_prediction(spells.q, qpred, unit) or (unit.pos:dist(player.pos) < 400 and q_range() == 400) then
+	if not pred.collision.get_prediction(spells.q, qpred, unit) or unit.pos:dist(player.pos) <= 400 then
 		if player.buff["pykeq"] then
-			if unit.pos:dist(player.pos) + 150 < q_range() or unit.pos:dist(player.pos) < 400 then
+			orb.core.set_pause_attack(0.1);
+			if unit.pos:dist(player.pos) + 150 < q_range() or (unit.pos:dist(player.pos) < 400 and q_range() <= 400) then
 				player:castSpell("release", 0, vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y))
 			end
 		else
