@@ -222,7 +222,7 @@ local function ondraw()
     	local data = ex_data[nerd.networkID];
     	if not data then return end
 
-    	if data.kill and data.draw then
+    	if data.kill and data.draw and nerd.isOnScreen then
 			graphics.draw_line(data.draw[1], data.draw[2], 50, graphics.argb(100, 192, 57, 43))
 			graphics.draw_line(data.draw[3], data.draw[4], 50, graphics.argb(100, 192, 57, 43))
 		end
