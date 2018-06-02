@@ -36,7 +36,7 @@ spells.q = {
 -- Pred input for R
 
 spells.r = { 
-    delay = 0.35;
+    delay = 0.325;
     radius = 50;
     speed = 1100;
     boundingRadiusMod = 1;
@@ -172,7 +172,11 @@ local function execute(unit)
 
 	ex_data[unit.networkID].draw = {x1, x2, x3, x4};
 
-	if vector_point_project(x1, x2, unit) or vector_point_project(x3, x4, unit) then
+	local ps1, pl1, line1 = vector_point_project(x1, x2, unit);
+	local ps2, pl2, line2 = vector_point_project(x3, x4, unit);
+	local newpos = vec2(pred_pos.x, pred_pos.z);
+
+	if (line1 and newpos:dist(ps1) < 50 + unit.boundingRadius) or (line2 and newpos:dist(ps2) < 50 + unit.boundingRadius) then
 		player:castSpell("pos", 3, pred_pos)
 	end
 end
