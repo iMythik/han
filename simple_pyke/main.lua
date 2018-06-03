@@ -156,7 +156,7 @@ local ex_data = {};
 local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
 	if player.pos:dist(unit.pos) > 700 then return end
-	if unit.isDead or not unit.isVisible and unit.isTargetable then return end
+	if unit.isDead or not unit.isVisible or not unit.isTargetable then return end
 	if unit.buff and unit.buff[17] then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
@@ -233,13 +233,15 @@ local function ondraw()
 		end
 	end
 
-	graphics.draw_circle(player.pos, q_range(), 2, graphics.argb(255, 192, 57, 43), 70)
+	if player.isOnScreen and not player.isDead then
+		graphics.draw_circle(player.pos, q_range(), 2, graphics.argb(255, 192, 57, 43), 70)
+	end
 end
 
 -- Buff hook, used for last q time storage
 
 local function onbuff(buff)
-	if buff.name == "PykeQ" then
+	if buff.owner == player and buff.name == "PykeQ" then
 		last_q_time = os.clock();
 	end
 end
