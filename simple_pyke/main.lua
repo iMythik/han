@@ -157,7 +157,7 @@ local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
 	if player.pos:dist(unit.pos) > 700 then return end
 	if unit.isDead or not unit.isVisible or not unit.isTargetable then return end
-	if unit.buff and unit.buff[17] then return end
+	if unit.buff and unit.buff[17] or unit.buff["sionpassivezombie"] then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
 	if not rpred then return end
