@@ -106,7 +106,7 @@ end
 -- Last hit minions with Q, kinda messy looking I know.. needs to be worked on
 
 local function last_hit()
-	if orb.menu.lane_clear:get() or orb.menu.last_hit:get() then
+	if orb.menu.lane_clear.key:get() or orb.menu.last_hit.key:get() then
 		for i = 0, objManager.minions.size[TEAM_ENEMY] - 1 do
 			local minion = objManager.minions[TEAM_ENEMY][i]
     		if minion and not minion.isDead and minion.pos:dist(player.pos) <= player.attackRange and orb.core.can_attack() then
