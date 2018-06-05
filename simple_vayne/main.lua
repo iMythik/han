@@ -21,6 +21,8 @@ menu:menu("e", "E Settings");
 	menu.e:slider('range', "Max range", 350, 0, 500, 5);
 	menu.e:slider('accuracy', "Accuracy checks", 5, 1, 50, 1);
 
+menu:keybind("poke", "Use AA>Q>AA>E Combo", nil, "G")
+
 ts.load_to_menu();
 
 ----------------
@@ -91,7 +93,7 @@ local function on_spell(spell)
 	if not spell or not spell.name or not spell.owner then return end
 	if spell.owner.isDead then return end
 	if spell.owner.team == player.team then return end
-	if player.pos:dist(spell.owner.pos) > player.attackRange + (player.boundingRadius + spell.owner.boundingRadius) then return end
+	if player.pos:dist(spell.owner.pos) > player.attackRange + (player.boundingRadius + spell.owner.boundingRadius) then return end	
 
 	for i = 0, #spells.interrupt.names do
 		if (spells.interrupt.names[i] == string.lower(spell.name)) then
@@ -214,7 +216,6 @@ local function condemn_next_aa(unit)
 
 	if orb.combat.target and orb.core.can_attack() then
 		player:castSpell("obj", 2, unit)
-		menu.e.aa:set("toggleValue", false)
   	end
 end
 
@@ -244,13 +245,20 @@ local function roll()
 	local target = get_target();
 	if not target then return end
 
-	if player:spellSlot(0).state ~= 0 then return end
-
 	local range = player.attackRange + (player.boundingRadius + target.boundingRadius)
 
 	if orb.combat.target then
+			
+		if menu.poke:get() and get_stacks(target) == 1 and player:spellSlot(0).state ~= 0 then
+			if player:spellSlot(2).state ~= 0 then return end
+			player:castSpell("obj", 2, target)
+		end
+
+		if player:spellSlot(0).state ~= 0 then return end
+
 		if player.pos:dist(target.pos) < range then
-			if menu.q.stacks:get() and get_stacks(target) ~= 2 then return end
+			if menu.q.stacks:get() and (get_stacks(target) ~= 2 and not menu.poke:get()) then return end
+			if menu.poke:get() and get_stacks(target) ~= 1 then return end
 			player:castSpell("pos", 0, game.mousePos)
 			orb.core.reset()
 			orb.combat.set_invoke_after_attack(false)
@@ -263,6 +271,7 @@ end
 local function out_of_aa()
 	if not orb.combat.is_active() then return end
 	if not menu.q.range:get() then return end
+	if menu.poke:get() then return end
 
 	local obj = ts.get_result(q_pred).obj
     if obj then
@@ -305,21 +314,38 @@ end
 
 local function ondraw()
 
-	if menu.e.aa:get() and player.isOnScreen then
+	if player.isOnScreen then
 		local pos = graphics.world_to_screen(player.pos);
-		graphics.draw_text_2D("Condemn on next AA", 14, pos.x, pos.y, graphics.argb(255,255,255,255))
+		if menu.e.aa:get() then
+			graphics.draw_text_2D("Condemn on next AA", 14, pos.x, pos.y, graphics.argb(255,255,255,255))
+		elseif menu.poke:get() then
+			graphics.draw_text_2D("Use AA>Q>AA>E Combo", 14, pos.x, pos.y, graphics.argb(255,255,255,255))
+		end
 	end
 
 	if e_pos and last_e > os.clock() - 3 and player.isOnScreen then
-
 		if e_target and not e_target.isOnScreen then return end
 		graphics.draw_circle(e_pos, 30, 5, graphics.argb(255, 192, 57, 43), 70)
+	end
+end
 
+-- Cast spell hook, for toggling poke combo off
+
+local function cast_spell(slot, vec3, vec3, networkID)
+	if slot == 2 then
+		if menu.poke:get() then
+			menu.poke:set("toggleValue", false)
+		end
+
+		if menu.e.aa:get() then
+			menu.e.aa:set("toggleValue", false)
+		end
 	end
 end
 
 cb.add(cb.draw, ondraw)
 cb.add(cb.spell, on_spell)
+cb.add(cb.castspell, cast_spell)
 
 orb.combat.register_f_pre_tick(ontick)
 orb.combat.register_f_after_attack(roll)

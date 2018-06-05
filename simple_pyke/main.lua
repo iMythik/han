@@ -1,5 +1,4 @@
 local orb = module.internal("orb");
-local evade = module.internal("evade");
 local pred = module.internal("pred");
 local ts = module.internal('TS');
 
