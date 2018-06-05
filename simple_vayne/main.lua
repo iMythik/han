@@ -249,7 +249,7 @@ local function roll()
 
 	if orb.combat.target then
 			
-		if menu.poke:get() and get_stacks(target) == 1 and player:spellSlot(0).state ~= 0 then
+		if menu.poke:get() and get_stacks(target) == 2 and player:spellSlot(0).state ~= 0 then
 			if player:spellSlot(2).state ~= 0 then return end
 			player:castSpell("obj", 2, target)
 		end
@@ -333,7 +333,7 @@ end
 
 local function cast_spell(slot, vec3, vec3, networkID)
 	if slot == 2 then
-		if menu.poke:get() then
+		if menu.poke:get() then		
 			menu.poke:set("toggleValue", false)
 		end
 
