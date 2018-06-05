@@ -271,12 +271,14 @@ end
 local function out_of_aa()
 	if not orb.combat.is_active() then return end
 	if not menu.q.range:get() then return end
-	if menu.poke:get() then return end
 
 	local obj = ts.get_result(q_pred).obj
     if obj then
     	local range = 300 + player.attackRange + (player.boundingRadius + obj.boundingRadius)
 		if obj.pos:dist(player.pos) <= range then
+
+			if menu.poke:get() and get_stacks(obj) ~= 1 then return end
+
 			local p = pred.present.get_source_pos(obj)
 			local dashpos = game.mousePos; 
 			if evade.core.is_action_safe(dashpos, math.huge, 0.25) then
@@ -333,7 +335,7 @@ end
 
 local function cast_spell(slot, vec3, vec3, networkID)
 	if slot == 2 then
-		if menu.poke:get() then		
+		if menu.poke:get() then
 			menu.poke:set("toggleValue", false)
 		end
 
