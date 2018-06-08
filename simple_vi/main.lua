@@ -11,6 +11,7 @@ local menu = menu("simplevi", "Simple Vi");
 
 menu:menu("e", "E Settings")
 	menu.e:boolean("aa", "AA > E only", true)
+	menu.e:boolean("jg", "Use in Jungle/Lane clear", true)
 
 menu:menu("r", "R Settings")
 	menu.r:boolean("use", "Use R in combo if R + E killable", true)
@@ -161,19 +162,18 @@ end
 -- Cast E (is called after every AA)
 
 local casted_e = false; -- toggle for casting e, to make sure it doesn't get casted every AA
+local has_aa = false;
 local function after_aa()
 	if not menu.e.aa:get() then return end
-	if not orb.combat.is_active() then return end
-	if player:spellSlot(2).state ~= 0 then casted_e = false return end
+	if not orb.combat.is_active() and not (menu.e.jg:get() and orb.menu.lane_clear.key:get()) then return end
+	if player:spellSlot(2).state ~= 0 then return end
 
-	if orb.combat.target then
-		if not casted_e then
-			player:castSpell("self", 2);
-			orb.core.reset()
-		end
-		casted_e = not casted_e
-		orb.combat.set_invoke_after_attack(false)
-  	end
+	casted_e = not casted_e
+	if casted_e then
+		player:castSpell("self", 2);
+		orb.core.reset()
+	end
+	orb.combat.set_invoke_after_attack(false)
 end
 
 -- Combo function to call all casts
@@ -181,13 +181,10 @@ end
 local function combo()
 	local target = get_target();
 	if not target then casted_e = false return end -- if no target found then reset e toggle
-
 	if not orb.combat.is_active() then return end
 
 	cast_q(target);
-
 	cast_e();
-
 	cast_r(target);
 end
 
