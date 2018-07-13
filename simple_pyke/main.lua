@@ -100,12 +100,7 @@ end
 local scale = {190, 240, 290, 340, 390, 440, 475, 510, 545, 580, 615, 635, 655};
 local function r_damage()
 	if player.levelRef < 6 then return 0 end
-	local dmg = 0;
-	if player.levelRef < 18 then
-		dmg = scale[player.levelRef - 5];
-	else
-		dmg = scale[#scale];
-	end
+	local dmg = scale[player.levelRef - 5];
 	local bonus = player.flatPhysicalDamageMod;
 	return (dmg + (bonus * 0.6));
 end
