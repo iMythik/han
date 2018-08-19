@@ -169,13 +169,13 @@ local function track_recall()
     		if not recall_time then return end
 
     		if data.recall then
-    			data.time = recall_time - (os.clock() - data.start);
+    			data.time = recall_time - (game.time - data.start);
     			return
     		end
 
 			data.recall = true;
 			data.time = recall_time;
-			data.start = os.clock();
+			data.start = game.time;
    		else
    			if data and data.recall then
    				data.recall = false;
@@ -214,10 +214,24 @@ end
 -- Combo functions --
 ---------------------
 
+-- Check if player has buff
+
+local function has_buff(name)
+	for i = 0, player.buffManager.count - 1 do
+    	local buff = player.buffManager:get(i)
+    	if buff and buff.valid and string.lower(buff.name) == name then
+    		if game.time <= buff.endTime then
+	      		return true, buff.startTime
+    		end
+    	end
+  	end
+  	return false, 0
+end
+
 -- Minigun status
 
 local function minigun()
-	if player.buff["jinxqicon"] then
+	if has_buff("jinxqicon") then
 		return true;
 	end
 	return false;
