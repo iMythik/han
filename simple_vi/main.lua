@@ -51,6 +51,34 @@ spells.q.range = {
 local q_is_active = false; -- Store active q boolean, gets updated through buff call
 local last_q_time = 0; -- Last q time store, also gets updated through buff call
 
+-- Check if player has buff, and if buff is valid
+
+local function has_buff(name)
+	for i = 0, player.buffManager.count - 1 do
+    	local buff = player.buffManager:get(i)
+    	if buff and buff.valid and buff.name == name then
+    		if game.time <= buff.endTime then
+	      		return true, buff.startTime
+    		end
+    	end
+  	end
+  	return false, 0
+end
+
+-- Updates buff times and actives for calculation
+
+local function update_buff()
+	local buff, time = has_buff("ViQLaunch");
+	if buff then
+		q_is_active = true;
+		last_q_time = time;
+	end
+
+	if has_buff(player, "ViQDash") then
+		q_is_active = false;
+	end
+end
+
 -- R Damage calculation
 
 local r_ratio = {150, 300, 450};
@@ -74,7 +102,7 @@ end
 -- Q range calculation
 
 local function q_range()
- 	local t = os.clock() - last_q_time;
+ 	local t = game.time - last_q_time;
  	local range = (spells.q.range.min + t/.125 * 47.5);
  	
  	if range > spells.q.range.max then
@@ -202,23 +230,10 @@ end
 -- Tick hook
 
 local function ontick()
+	update_buff();
 	combo();
 end
 
--- Buff hook (only used to toggle q boolean & get last q time)
-
-local function onbuff(buff)
-	if (buff.name == "ViQLaunch") then
-		q_is_active = true;
-		last_q_time = os.clock();
-	end
-	if buff.name == "ViQDash" then
-		q_is_active = false
-	end
-end
-
 cb.add(cb.draw, ondraw)
-cb.add(cb.updatebuff, onbuff)
-
 orb.combat.register_f_pre_tick(ontick)
 orb.combat.register_f_after_attack(after_aa)
