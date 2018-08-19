@@ -169,14 +169,28 @@ local e_pos = nil; -- E position store, gets updated once condemn is called
 local e_target = nil; -- E target store, used to check if player is still visible
 local last_e = os.clock(); -- Last E time store, updated every time E is casted
 
+-- Check if player has buff, and if buff is valid
+
+local function has_buff(unit, name)
+	for i = 0, unit.buffManager.count - 1 do
+    	local buff = unit.buffManager:get(i)
+    	if buff and buff.valid and string.lower(buff.name) == name then
+    		if game.time <= buff.endTime then
+	      		return true, buff.stacks
+    		end
+    	end
+  	end
+  	return false, 0
+end
+
 -- Return W stacks
 
 local function get_stacks(unit)
-	local stacks = 0;
-	if unit.buff["vaynesilvereddebuff"] then
-		stacks = unit.buff["vaynesilvereddebuff"].stacks
+	local buff, stacks = has_buff(unit, "vaynesilvereddebuff")
+	if buff then
+		return stacks;
 	end
-	return stacks;
+	return 0;
 end
 
 -- Condemn cast and logic
