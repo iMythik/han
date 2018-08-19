@@ -1,4 +1,5 @@
 local orb = module.internal("orb");
+local evade = module.internal("evade");
 local pred = module.internal("pred");
 local ts = module.internal('TS');
 
@@ -65,6 +66,30 @@ end
 -- Calc functions --
 --------------------
 
+-- Check if unit has buff
+
+local function has_buff(unit, name)
+	for i = 0, unit.buffManager.count - 1 do
+    	local buff = unit.buffManager:get(i)
+    	if buff and buff.valid and string.lower(buff.name) == string.lower(name) and buff.owner == unit then
+    		if game.time <= buff.endTime then
+	      		return true, buff.startTime
+    		end
+    	end
+  	end
+  	return false, 0
+end
+
+-- Update buff store for calculations
+
+local last_q_time = 0; -- last q time store
+local function update_buff()
+	local buff, time = has_buff(player, "PykeQ");
+	if buff then
+		last_q_time = time;
+	end
+end
+
 -- Point ray-line projection intersection calculation using vectors
 
 local function vector_point_project(v1, v2, v)
@@ -79,9 +104,8 @@ end
 
 -- Q range calculation
 
-local last_q_time = 0; -- last q time store
 local function q_range()
- 	local t = os.clock() - last_q_time;
+ 	local t = game.time - last_q_time;
  	local range = 400;
 
  	if t > 0.5 then
@@ -119,15 +143,14 @@ end
 
 local function spear(unit)
 	if player:spellSlot(0).state ~= 0 then return end
-	if (player:spellSlot(2).state == 0 and unit.pos:dist(player.pos) < menu.e.range:get()) and not player.buff['pykeq'] and menu.e.e:get() then return end
+	if (player:spellSlot(2).state == 0 and unit.pos:dist(player.pos) < menu.e.range:get()) and not has_buff(player, "PykeQ") and menu.e.e:get() then return end
 	if unit.pos:dist(player.pos) > q_range() then return end
 
 	local qpred = pred.linear.get_prediction(spells.q, unit)
 	if not qpred then return end
 		
 	if not pred.collision.get_prediction(spells.q, qpred, unit) or unit.pos:dist(player.pos) <= 400 then
-		if player.buff["pykeq"] then
-			orb.core.set_pause_attack(0.1);
+		if has_buff(player, "PykeQ") then
 			if unit.pos:dist(player.pos) + 150 < q_range() or (unit.pos:dist(player.pos) < 400 and q_range() <= 400) then
 				player:castSpell("release", 0, vec3(qpred.endPos.x, game.mousePos.y, qpred.endPos.y))
 			end
@@ -142,7 +165,7 @@ end
 local function dash(unit)
 	if not menu.e.e:get() then return end
 	if player:spellSlot(2).state ~= 0 then return end
-	if player.buff["pykeq"] then return end
+	if has_buff(player, "PykeQ") then return end
 	if unit.pos:dist(player.pos) > menu.e.range:get() then return end
 	if mana_pct() < menu.e.mana:get() then return end
 
@@ -152,11 +175,13 @@ end
 -- Execute R, with X intersection calculation, and draw storage
 
 local ex_data = {};
+local last_execute = 0;
 local function execute(unit)
 	if player:spellSlot(3).state == 32 then return end
 	if player.pos:dist(unit.pos) > 700 then return end
 	if unit.isDead or not unit.isVisible or not unit.isTargetable then return end
-	if unit.buff and unit.buff[17] or unit.buff["sionpassivezombie"] then return end
+	if unit.buff and unit.buff[17] or has_buff(unit, "sionpassivezombie") then return end
+	if last_execute > 0 and game.time - last_execute < 1.2 then return end
 
 	local rpred = pred.circular.get_prediction(spells.r, unit)
 	if not rpred then return end
@@ -177,6 +202,7 @@ local function execute(unit)
 
 	if (line1 and newpos:dist(ps1) < 50 + unit.boundingRadius) or (line2 and newpos:dist(ps2) < 50 + unit.boundingRadius) then
 		player:castSpell("pos", 3, pred_pos)
+		last_execute = game.time;
 	end
 end
 
@@ -200,6 +226,8 @@ end
 -- With loop for kill stealing
 
 local function ontick()
+
+	update_buff();
 
 	for i = 0, objManager.enemies_n - 1 do
     	local nerd = objManager.enemies[i]
@@ -237,14 +265,5 @@ local function ondraw()
 	end
 end
 
--- Buff hook, used for last q time storage
-
-local function onbuff(buff)
-	if buff.owner == player and buff.name == "PykeQ" then
-		last_q_time = os.clock();
-	end
-end
-
-cb.add(cb.updatebuff, onbuff)
 cb.add(cb.draw, ondraw)
 orb.combat.register_f_pre_tick(ontick)
