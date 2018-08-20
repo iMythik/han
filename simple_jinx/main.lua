@@ -23,7 +23,7 @@ menu:menu("q", "Q Settings");
 	menu.q:slider('mana', "Don't use rockets under mana percent", 25, 0, 100, 1);
 
 menu:menu("w", "W Settings");
-	menu.e:boolean("aa", "Only use W when out of AA range", true);
+	menu.w:boolean("aa", "Only use W when out of AA range", true);
 	menu.w:slider('mana', "Don't use W under mana percent", 25, 0, 100, 1);
 
 menu:menu("e", "E Settings");
