@@ -22,6 +22,10 @@ local menu = menu("simplejinx", "Simple Jinx");
 menu:menu("q", "Q Settings");
 	menu.q:slider('mana', "Don't use rockets under mana percent", 25, 0, 100, 1);
 
+menu:menu("w", "W Settings");
+	menu.e:boolean("aa", "Only use W when out of AA range", true);
+	menu.w:slider('mana', "Don't use W under mana percent", 25, 0, 100, 1);
+
 menu:menu("e", "E Settings");
 	menu.e:keybind("manual", "Manual E", "C", nil)
 	menu.e:boolean("auto", "Auto E on good spots", true);
@@ -43,7 +47,7 @@ local spells = {};
 -- Pred input for W
 
 spells.w = { 
-	delay = 0.6; 
+	delay = 0.5; 
 	width = 55;
 	speed = 3200; 
 	boundingRadiusMod = 1; 
@@ -214,8 +218,6 @@ end
 -- Combo functions --
 ---------------------
 
--- Check if player has buff
-
 local function has_buff(name)
 	for i = 0, player.buffManager.count - 1 do
     	local buff = player.buffManager:get(i)
@@ -279,21 +281,6 @@ local function fishbones(unit)
 	end
 end
 
--- Cast Q when target steps out of aa range, and can hit with enhanced Q range
-
-local function out_of_aa()
-	if not orb.combat.is_active() then return end
-
-	local target = get_target(select_target);
-	if not target then return end
-
-	if mana_pct() < menu.q.mana:get() then return end
-
-    if minigun() and player.pos:dist(target.pos) > player.attackRange then
-    	player:castSpell("self", 0)
-    end
-end
-
 -- Cast W with prediction (zap zap)
 
 local function zap(unit)
@@ -306,6 +293,26 @@ local function zap(unit)
 	if not pred.collision.get_prediction(spells.w, wpred, unit) then
 		player:castSpell("pos", 1, vec3(wpred.endPos.x, game.mousePos.y, wpred.endPos.y))
 	end
+end
+
+
+-- Cast Q when target steps out of aa range, and can hit with enhanced Q range
+
+local function out_of_aa()
+	if not orb.combat.is_active() then return end
+
+	local target = get_target(select_target);
+	if not target then return end
+
+	if (mana_pct() > menu.w.mana:get() and menu.w.aa:get()) then
+		zap(target);
+	end
+
+	if mana_pct() < menu.q.mana:get() then return end
+
+    if minigun() and player.pos:dist(target.pos) > player.attackRange then
+    	player:castSpell("self", 0)
+    end
 end
 
 
@@ -386,7 +393,10 @@ local function combo()
 
 	if not orb.combat.is_active() then return end
 
-	zap(target);
+	if not menu.w.aa:get() then
+		zap(target);
+	end
+
 	fishbones(target);
 
 end
